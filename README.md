@@ -1,85 +1,85 @@
-# Arduino 单线莫尔斯电报机
+# Arduino Single-Wire Morse Telegraph
 
-这是一个基于两台 Arduino Uno 的单线半双工有线电报机项目。  
-两块板子烧录**同一份程序**，通过一根数据线加共地进行通信，使用莫尔斯编码传输帧内容，并实现了基础的总线仲裁、ACK 确认和超时重发。
+This project is a single-wire, half-duplex wired telegraph built with two Arduino Uno boards.  
+Both boards run the **same firmware** and communicate through one data wire plus a shared ground. Frame contents are transmitted with Morse code, with basic bus arbitration, ACK confirmation, and timeout-based retransmission.
 
-## 项目特点
+## Features
 
-- 两台 Arduino Uno 对称设计，无主从之分
-- 单线半双工通信
-- 串口输入一行文本后自动发送
-- 使用莫尔斯编码传输
-- 发送时 `D13` 驱动蜂鸣器发声
-- 接收时 `D12` 点亮绿色 LED
-- 支持总线空闲检测、随机退避、ACK 和超时重发
+- Symmetric design with two Arduino Uno boards and no master/slave split
+- Single-wire half-duplex communication
+- Automatically sends a line of text entered through the serial port
+- Uses Morse code for transmission
+- Drives a buzzer on `D13` while sending
+- Lights a green LED on `D12` while receiving
+- Supports bus idle detection, random backoff, ACK, and timeout retransmission
 
-## 目录结构
+## Directory Structure
 
 - `firmware/Arduino-Wired-Telegraph/`
-  - Arduino 工程目录
-  - 直接用 Arduino IDE 打开这个目录即可
+  - Arduino project directory
+  - Open this directory directly in the Arduino IDE
 - `docs/`
-  - `PRD.md`：产品需求文档
-  - `MORSE_CODE.md`：莫尔斯编码对照表
-  - `MORSE_TREE.md`：莫尔斯编码树
-  - `WIRING.md`：接线说明
-  - `AI_OBSERVE.md`：AI 协作开发观察记录
+  - `PRD.md`: product requirements document
+  - `MORSE_CODE.md`: Morse code reference table
+  - `MORSE_TREE.md`: Morse code tree
+  - `WIRING.md`: wiring instructions
+  - `AI_OBSERVE.md`: notes from AI-assisted development
 
-## 工程文件说明
+## Firmware Layout
 
-`firmware/Arduino-Wired-Telegraph/` 目录下主要文件如下：
+The main files under `firmware/Arduino-Wired-Telegraph/` are:
 
 - `Arduino-Wired-Telegraph.ino`
-  - 主入口，负责初始化和主循环
+  - Main entry point responsible for initialization and the main loop
 - `telegraph_config.h`
-  - 全局引脚与时间参数配置
+  - Global pin definitions and timing configuration
 - `bus.h` / `bus.cpp`
-  - 单线总线层，负责开漏发送、接收边沿解析、符号切分
+  - Single-wire bus layer for open-drain style transmission, receive-edge parsing, and symbol splitting
 - `morse.h` / `morse.cpp`
-  - 莫尔斯编码表、字符编解码
+  - Morse code table and character encode/decode logic
 - `protocol.h` / `protocol.cpp`
-  - 上层协议，包括消息排队、总线仲裁、ACK、重发和串口日志
+  - Upper-layer protocol including message queuing, bus arbitration, ACK, retransmission, and serial logging
 
-## 默认硬件定义
+## Default Hardware Mapping
 
-每台 Arduino Uno：
+For each Arduino Uno:
 
-- `D2`：单线通信引脚
-- `D13`：蜂鸣器控制输出
-- `D12`：接收指示绿灯输出
+- `D2`: single-wire communication pin
+- `D13`: buzzer control output
+- `D12`: green LED output for receive indication
 
-两台板子之间：
+Between the two boards:
 
-- 1 根数据线连接 `D2 <-> D2`
-- 1 根共地线连接 `GND <-> GND`
+- One data wire connects `D2 <-> D2`
+- One shared ground wire connects `GND <-> GND`
 
-注意：
+Notes:
 
-- 虽然逻辑上是“单线通信”，但硬件上**必须共地**
-- 程序按开漏/准开漏思路工作：发送有效信号时拉低总线，空闲时释放总线并依赖上拉
+- Although the protocol is logically "single-wire communication," the hardware **must** share a common ground
+- The program follows an open-drain or quasi-open-drain approach: it pulls the bus low when sending an active signal, and releases the bus when idle while relying on pull-up behavior
 
-## 使用方法
+## Usage
 
-1. 用 Arduino IDE 打开 `firmware/Arduino-Wired-Telegraph/Arduino-Wired-Telegraph.ino`
-2. 将同一份程序分别烧录到两台 Arduino Uno
-3. 按约定接好数据线、共地、蜂鸣器和接收 LED
-4. 打开两边串口监视器，波特率设置为 `115200`
-5. 在任意一端输入一行文本并回车
-6. 本端会自动发送，对端会自动接收并在串口打印消息
+1. Open `firmware/Arduino-Wired-Telegraph/Arduino-Wired-Telegraph.ino` in the Arduino IDE.
+2. Flash the same firmware to both Arduino Uno boards.
+3. Connect the data wire, shared ground, buzzer, and receive LED as specified.
+4. Open the serial monitor on both sides and set the baud rate to `115200`.
+5. Enter a line of text on either side and press Enter.
+6. The local board sends automatically, and the remote board receives and prints the message through serial output.
 
-## 当前协议行为
+## Current Protocol Behavior
 
-- 两台设备对称运行
-- 发送前会先检测总线是否空闲
-- 若双方都想发，会通过随机退避避免同时占线
-- 接收端收到有效数据后会自动发送 ACK
-- 发送端等待 ACK 超时后会自动重试
-- 单条消息默认最大长度为 `32` 个字符
+- Both devices run symmetrically
+- The sender checks whether the bus is idle before transmitting
+- If both sides want to send at the same time, random backoff is used to avoid collision
+- The receiver automatically sends an ACK after valid data is received
+- The sender automatically retries after an ACK timeout
+- The default maximum length of a single message is `32` characters
 
-## 说明
+## Notes
 
-- 当前代码中的注释为中文
-- 当前仓库已包含协议设计和莫尔斯资料文档
-- 硬件接线说明见 `docs/WIRING.md`
-- 本次 AI 协作过程说明见 `docs/AI_OBSERVE.md`
-- 如需继续扩展，建议下一步补充接线文档、状态机图和实测调试记录
+- Comments in the current codebase are written in Chinese
+- The repository already includes protocol design notes and Morse reference documents
+- Hardware wiring details are documented in `docs/WIRING.md`
+- The AI collaboration process is documented in `docs/AI_OBSERVE.md`
+- If you want to extend the project further, the recommended next step is to add wiring diagrams, a state machine diagram, and real debugging records
